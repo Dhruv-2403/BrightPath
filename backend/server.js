@@ -15,8 +15,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '.env') });
-import connectDB from '../configs/mongodb.js'
-import { clerkWebHooks } from "../configs/controllers/webhooks.js";
+import connectDB from './configs/mongodb.js'
+import { clerkWebHooks } from "./controllers/webhooks.js";
 
 
 const app=express()
