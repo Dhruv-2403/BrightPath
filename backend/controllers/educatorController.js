@@ -162,4 +162,5 @@ export const getEnrolledStudentsData = async (req, res) => {
             success: false, message: err.message
         })
     }
+}
 
