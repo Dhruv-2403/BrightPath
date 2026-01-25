@@ -23,10 +23,7 @@ const purchaseSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
-<<<<<<< HEAD
+
 const Purchase = mongoose.model("Purchase", purchaseSchema)
 export default Purchase;
-=======
-const Purchase = mongoose.model("Purchase", purchaseSchema);
-export default Purchase;
->>>>>>> 384cca2 (Added Stripe Payment GateWay)
+
