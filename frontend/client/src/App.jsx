@@ -1,5 +1,5 @@
 import React from "react"
-import { Routes,Route } from "react-router-dom"
+import { Routes, Route } from "react-router-dom"
 import Home from "./pages/student/Home"
 import CourseList from "./pages/student/CourseList"
 import CourseDetails from "./pages/student/CourseDetails"
@@ -11,26 +11,25 @@ import Dashboard from "./pages/educator/Dashboard"
 import MyCourses from "./pages/educator/MyCourses"
 import StudentsEnrolled from "./pages/educator/StudentsEnrolled"
 import Educator from "./pages/educator/Educator"
-const App=()=>{
+const App = () => {
   return (
     <div>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/course-list" element={<CourseList />}/>
-        <Route path="/course-list/:input" element={<CourseList />}/>
-        <Route path="/course/:id" element={<CourseDetails />}/>
-        <Route path="/my-enrollments" element={<MyEnrollments />}/>
-        <Route path="/player/:courseId" element={<Player/>}/>
-        <Route path="/loading/:path" element={<Loading />}/>
+        <Route path="/course-list" element={<CourseList />} />
+        <Route path="/course-list/:input" element={<CourseList />} />
+        <Route path="/course/:id" element={<CourseDetails />} />
+        <Route path="/my-enrollments" element={<MyEnrollments />} />
+        <Route path="/player/:courseId" element={<Player />} />
+        <Route path="/loading/:path" element={<Loading />} />
 
 
-        <Route path="/educator" element = {<Educator/>}>
-
-            <Route path="educator" element = {<Dashboard/>}/>
-            <Route path="add-courses" element = {<AddCourse/>}/>
-            <Route path="my-courses" element = {<MyCourses/>}/>
-            <Route path="students-enrolled" element = {<StudentsEnrolled/>}/>
-
+        <Route path="/educator" element={<Educator />}>
+          <Route index element={<Dashboard />} />
+          <Route path="educator" element={<Dashboard />} />
+          <Route path="add-courses" element={<AddCourse />} />
+          <Route path="my-courses" element={<MyCourses />} />
+          <Route path="students-enrolled" element={<StudentsEnrolled />} />
         </Route>
 
       </Routes>

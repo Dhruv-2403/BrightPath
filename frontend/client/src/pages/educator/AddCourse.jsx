@@ -9,6 +9,8 @@ const AddCourse = () => {
   const { backendUrl } = useContext(AppContext);
   const navigate = useNavigate();
 
+  const categories = ['DSA', 'Web Development', 'Mobile Development', 'Data Science', 'Machine Learning', 'DevOps', 'Cloud Computing', 'Other'];
+
   const [formData, setFormData] = useState({
     courseTitle: '',
     courseDescription: '',
@@ -246,15 +248,18 @@ const AddCourse = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Category *
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="category"
                     value={formData.category}
                     onChange={handleInputChange}
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-                    placeholder="e.g., Web Development"
                     required
-                  />
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>

@@ -12,20 +12,36 @@ const CourseList = () => {
   const navigate = useNavigate()
   const { input } = useParams()
   const [filteredCourse, setFilteredCourse] = useState([])
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedLevel, setSelectedLevel] = useState('')
+
+  const categories = ['DSA', 'Web Development', 'Mobile Development', 'Data Science', 'Machine Learning', 'DevOps', 'Cloud Computing', 'Other']
+  const levels = ['Beginner', 'Intermediate', 'Advanced']
 
   useEffect(() => {
     if (allCourses && allCourses.length > 0) {
-      const tempCourses = allCourses.slice()
+      let tempCourses = allCourses.slice()
 
+      // Filter by search input
       if (input) {
-        setFilteredCourse(tempCourses.filter(
+        tempCourses = tempCourses.filter(
           item => item.courseTitle.toLowerCase().includes(input.toLowerCase())
-        ))
-      } else {
-        setFilteredCourse(tempCourses)
+        )
       }
+
+      // Filter by category
+      if (selectedCategory) {
+        tempCourses = tempCourses.filter(item => item.category === selectedCategory)
+      }
+
+      // Filter by level
+      if (selectedLevel) {
+        tempCourses = tempCourses.filter(item => item.level === selectedLevel)
+      }
+
+      setFilteredCourse(tempCourses)
     }
-  }, [allCourses, input])
+  }, [allCourses, input, selectedCategory, selectedLevel])
 
   return (
     <div className="bg-white min-h-screen font-outfit">
@@ -54,6 +70,51 @@ const CourseList = () => {
 
           <div className="w-full md:w-auto">
             <SearchBar data={input} />
+          </div>
+        </div>
+
+        {/* Filters Section */}
+        <div className="mb-8 space-y-4">
+          <div className="flex flex-wrap gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">Category:</label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">All Categories</option>
+                {categories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="text-sm font-medium text-gray-700">Level:</label>
+              <select
+                value={selectedLevel}
+                onChange={(e) => setSelectedLevel(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                <option value="">All Levels</option>
+                {levels.map(level => (
+                  <option key={level} value={level}>{level}</option>
+                ))}
+              </select>
+            </div>
+
+            {(selectedCategory || selectedLevel) && (
+              <button
+                onClick={() => {
+                  setSelectedCategory('')
+                  setSelectedLevel('')
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                Clear Filters
+              </button>
+            )}
           </div>
         </div>
 
