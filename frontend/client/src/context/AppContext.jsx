@@ -1,18 +1,25 @@
-import {createContext} from "react";
+import { createContext, useState } from "react";
 
+export const AppContext = createContext();
 
-const AppContext = createContext();
+export const AppContextProvider = (props) => {
+    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+    const [courses, setCourses] = useState([]);
+    const [loading, setLoading] = useState(false);
 
-export const AppContextProvider=(props)=>{
-    const value={
-
+    const value = {
+        backendUrl,
+        courses,
+        setCourses,
+        loading,
+        setLoading
     }
-    return(
+
+    return (
         <AppContext.Provider value={value}>
             {props.children}
         </AppContext.Provider>
     )
 }
 
-
-
+export default AppContext;

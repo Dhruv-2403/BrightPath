@@ -1,11 +1,10 @@
 import Course from "../models/course.js";
-
 export const getAllCourses = async (req, res) => {
     try {
         const courses = await Course.find({
             isPublished: true
         }).select(
-            ["-courseContent", "enrolledStudents"]
+            ["-courseContent", "-enrolledStudents"]
         ).populate({ path: "educator" })
 
 
@@ -42,7 +41,5 @@ export const getCourseId = async (req, res) => {
 
     }
 }
-
-
 
 
