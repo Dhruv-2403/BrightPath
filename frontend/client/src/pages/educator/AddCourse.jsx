@@ -1,434 +1,268 @@
-import React, { useState, useContext } from 'react';
-import { useAuth } from '@clerk/clerk-react';
-import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
+import React, { useContext, useEffect, useRef, useState } from 'react';
+import { assets } from '../../assets/assets';
+import { toast } from 'react-toastify'
+import Quill from 'quill';
+import uniqid from 'uniqid';
+import axios from 'axios'
 import { AppContext } from '../../context/AppContext';
 
 const AddCourse = () => {
-  const { getToken } = useAuth();
-  const { backendUrl } = useContext(AppContext);
-  const navigate = useNavigate();
 
-  const categories = ['DSA', 'Web Development', 'Mobile Development', 'Data Science', 'Machine Learning', 'DevOps', 'Cloud Computing', 'Other'];
+  const editorRef = useRef(null);
+  const quillRef = useRef(null);
 
-  const [formData, setFormData] = useState({
-    courseTitle: '',
-    courseDescription: '',
-    coursePrice: '',
-    discount: 0,
-    category: '',
-    level: 'Beginner',
-    isPublished: false,
-    courseThumbnail: null
+  const { backendUrl, getToken } = useContext(AppContext)
+
+  const [courseTitle, setCourseTitle] = useState('')
+  const [coursePrice, setCoursePrice] = useState(0)
+  const [discount, setDiscount] = useState(0)
+  const [image, setImage] = useState(null)
+  const [chapters, setChapters] = useState([]);
+  const [showPopup, setShowPopup] = useState(false);
+  const [currentChapterId, setCurrentChapterId] = useState(null);
+  const [lectureDetails, setLectureDetails] = useState({
+    lectureTitle: '',
+    lectureDuration: '',
+    lectureUrl: '',
+    isPreviewFree: false,
   });
 
-  const [thumbnailPreview, setThumbnailPreview] = useState(null);
-  const [chapters, setChapters] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  // Handle form input changes
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-  };
-
-  // Handle thumbnail upload
-  const handleThumbnailChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFormData(prev => ({ ...prev, courseThumbnail: file }));
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setThumbnailPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  // Add new chapter
-  const addChapter = () => {
-    setChapters([...chapters, {
-      chapterTitle: '',
-      chapterContent: []
-    }]);
-  };
-
-  // Update chapter title
-  const updateChapterTitle = (index, title) => {
-    const updatedChapters = [...chapters];
-    updatedChapters[index].chapterTitle = title;
-    setChapters(updatedChapters);
-  };
-
-  // Add lecture to chapter
-  const addLecture = (chapterIndex) => {
-    const updatedChapters = [...chapters];
-    updatedChapters[chapterIndex].chapterContent.push({
-      lectureTitle: '',
-      lectureUrl: '',
-      isPreviewFree: false
-    });
-    setChapters(updatedChapters);
-  };
-
-  // Update lecture
-  const updateLecture = (chapterIndex, lectureIndex, field, value) => {
-    const updatedChapters = [...chapters];
-    updatedChapters[chapterIndex].chapterContent[lectureIndex][field] =
-      field === 'isPreviewFree' ? value : value;
-    setChapters(updatedChapters);
-  };
-
-  // Remove chapter
-  const removeChapter = (index) => {
-    setChapters(chapters.filter((_, i) => i !== index));
-  };
-
-  // Remove lecture
-  const removeLecture = (chapterIndex, lectureIndex) => {
-    const updatedChapters = [...chapters];
-    updatedChapters[chapterIndex].chapterContent =
-      updatedChapters[chapterIndex].chapterContent.filter((_, i) => i !== lectureIndex);
-    setChapters(updatedChapters);
-  };
-
-  // Handle form submission
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    // Validation
-    if (!formData.courseTitle || !formData.courseDescription || !formData.coursePrice) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-
-    if (!formData.courseThumbnail) {
-      toast.error('Please upload a course thumbnail');
-      return;
-    }
-
-    if (chapters.length === 0) {
-      toast.error('Please add at least one chapter');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const token = await getToken();
-
-      // Prepare course data
-      const courseData = {
-        courseTitle: formData.courseTitle,
-        courseDescription: formData.courseDescription,
-        coursePrice: parseFloat(formData.coursePrice),
-        discount: parseInt(formData.discount) || 0,
-        category: formData.category,
-        level: formData.level,
-        isPublished: formData.isPublished,
-        courseContent: chapters
-      };
-
-      // Create FormData for file upload
-      const formDataToSend = new FormData();
-      formDataToSend.append('courseData', JSON.stringify(courseData));
-      formDataToSend.append('image', formData.courseThumbnail);
-
-      const response = await fetch(`${backendUrl}/api/educator/add-course`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formDataToSend
-      });
-
-      const data = await response.json();
-
-      if (data.success || data.succes) { // Note: backend has typo "succes"
-        toast.success('Course added successfully!');
-        navigate('/educator/my-courses');
-      } else {
-        toast.error(data.message || 'Failed to add course');
+  const handleChapter = (action, chapterId) => {
+    if (action === 'add') {
+      const title = prompt('Enter Chapter Name:');
+      if (title) {
+        const newChapter = {
+          chapterId: uniqid(),
+          chapterTitle: title,
+          chapterContent: [],
+          collapsed: false,
+          chapterOrder: chapters.length > 0 ? chapters.slice(-1)[0].chapterOrder + 1 : 1,
+        };
+        setChapters([...chapters, newChapter]);
       }
-    } catch (error) {
-      console.error('Error adding course:', error);
-      toast.error('Failed to add course. Please try again.');
-    } finally {
-      setLoading(false);
+    } else if (action === 'remove') {
+      setChapters(chapters.filter((chapter) => chapter.chapterId !== chapterId));
+    } else if (action === 'toggle') {
+      setChapters(
+        chapters.map((chapter) =>
+          chapter.chapterId === chapterId ? { ...chapter, collapsed: !chapter.collapsed } : chapter
+        )
+      );
     }
   };
+
+  const handleLecture = (action, chapterId, lectureIndex) => {
+    if (action === 'add') {
+      setCurrentChapterId(chapterId);
+      setShowPopup(true);
+    } else if (action === 'remove') {
+      setChapters(
+        chapters.map((chapter) => {
+          if (chapter.chapterId === chapterId) {
+            chapter.chapterContent.splice(lectureIndex, 1);
+          }
+          return chapter;
+        })
+      );
+    }
+  };
+
+  const addLecture = () => {
+    setChapters(
+      chapters.map((chapter) => {
+        if (chapter.chapterId === currentChapterId) {
+          const newLecture = {
+            ...lectureDetails,
+            lectureOrder: chapter.chapterContent.length > 0 ? chapter.chapterContent.slice(-1)[0].lectureOrder + 1 : 1,
+            lectureId: uniqid()
+          };
+          chapter.chapterContent.push(newLecture);
+        }
+        return chapter;
+      })
+    );
+    setShowPopup(false);
+    setLectureDetails({
+      lectureTitle: '',
+      lectureDuration: '',
+      lectureUrl: '',
+      isPreviewFree: false,
+    });
+  };
+
+  const handleSubmit = async (e) => {
+    try {
+
+      e.preventDefault();
+
+      if (!image) {
+        toast.error('Thumbnail Not Selected')
+      }
+
+      const courseData = {
+        courseTitle,
+        courseDescription: quillRef.current.root.innerHTML,
+        coursePrice: Number(coursePrice),
+        discount: Number(discount),
+        courseContent: chapters,
+      }
+
+      const formData = new FormData()
+      formData.append('courseData', JSON.stringify(courseData))
+      formData.append('image', image)
+
+      const token = await getToken()
+
+      const { data } = await axios.post(backendUrl + '/api/educator/add-course', formData,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+
+      if (data.success) {
+        toast.success(data.message)
+        setCourseTitle('')
+        setCoursePrice(0)
+        setDiscount(0)
+        setImage(null)
+        setChapters([])
+        quillRef.current.root.innerHTML = ""
+      } else (
+        toast.error(data.message)
+      )
+
+    } catch (error) {
+      toast.error(error.message)
+    }
+
+  };
+
+  useEffect(() => {
+    // Initiate Quill only once
+    if (!quillRef.current && editorRef.current) {
+      quillRef.current = new Quill(editorRef.current, {
+        theme: 'snow',
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    console.log(chapters);
+  }, [chapters]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              Create New Course
-            </h1>
-            <p className="text-gray-600 mt-2">Fill in the details below to create your course</p>
+    <div className='h-screen overflow-scroll flex flex-col items-start justify-between md:p-8 md:pb-0 p-4 pt-8 pb-0'>
+      <form onSubmit={handleSubmit} className='flex flex-col gap-4 max-w-md w-full text-gray-500'>
+        <div className='flex flex-col gap-1'>
+          <p>Course Title</p>
+          <input onChange={e => setCourseTitle(e.target.value)} value={courseTitle} type="text" placeholder='Type here' className='outline-none md:py-2.5 py-2 px-3 rounded border border-gray-500' required />
+        </div>
+
+        <div className='flex flex-col gap-1'>
+          <p>Course Description</p>
+          <div ref={editorRef}></div>
+        </div>
+
+        <div className='flex items-center justify-between flex-wrap'>
+          <div className='flex flex-col gap-1'>
+            <p>Course Price</p>
+            <input onChange={e => setCoursePrice(e.target.value)} value={coursePrice} type="number" placeholder='0' className='outline-none md:py-2.5 py-2 w-28 px-3 rounded border border-gray-500' required />
+          </ div>
+
+          <div className='flex md:flex-row flex-col items-center gap-3'>
+            <p>Course Thumbnail</p>
+            <label htmlFor='thumbnailImage' className='flex items-center gap-3'>
+              <img src={assets.file_upload_icon} alt="" className='p-3 bg-blue-500 rounded' />
+              <input type="file" id='thumbnailImage' onChange={e => setImage(e.target.files[0])} accept="image/*" hidden />
+              <img className='max-h-10' src={image ? URL.createObjectURL(image) : ''} alt="" />
+            </label>
           </div>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Basic Information */}
-            <div className="space-y-6">
-              <h2 className="text-2xl font-semibold text-gray-800">Basic Information</h2>
+        <div className='flex flex-col gap-1'>
+          <p>Discount %</p>
+          <input onChange={e => setDiscount(e.target.value)} value={discount} type="number" placeholder='0' min={0} max={100} className='outline-none md:py-2.5 py-2 w-28 px-3 rounded border border-gray-500' required />
+        </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Course Title *
-                </label>
-                <input
-                  type="text"
-                  name="courseTitle"
-                  value={formData.courseTitle}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-                  placeholder="Enter course title"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Course Description *
-                </label>
-                <textarea
-                  name="courseDescription"
-                  value={formData.courseDescription}
-                  onChange={handleInputChange}
-                  rows="4"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-                  placeholder="Describe your course"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Price (USD) *
-                  </label>
-                  <input
-                    type="number"
-                    name="coursePrice"
-                    value={formData.coursePrice}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-                    placeholder="99.99"
-                    step="0.01"
-                    required
-                  />
+        {/* Adding Chapters & Lectures */}
+        <div>
+          {chapters.map((chapter, chapterIndex) => (
+            <div key={chapterIndex} className="bg-white border rounded-lg mb-4">
+              <div className="flex justify-between items-center p-4 border-b">
+                <div className="flex items-center">
+                  <img className={`mr-2 cursor-pointer transition-all ${chapter.collapsed && "-rotate-90"} `} onClick={() => handleChapter('toggle', chapter.chapterId)} src={assets.dropdown_icon} width={14} alt="" />
+                  <span className="font-semibold">{chapterIndex + 1} {chapter.chapterTitle}</span>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Discount (%)
-                  </label>
-                  <input
-                    type="number"
-                    name="discount"
-                    value={formData.discount}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-                    placeholder="0"
-                    min="0"
-                    max="100"
-                  />
-                </div>
+                <span className="text-gray-500">{chapter.chapterContent.length} Lectures</span>
+                <img onClick={() => handleChapter('remove', chapter.chapterId)} src={assets.cross_icon} alt="" className='cursor-pointer' />
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Category *
-                  </label>
-                  <select
-                    name="category"
-                    value={formData.category}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-                    required
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Level
-                  </label>
-                  <select
-                    name="level"
-                    value={formData.level}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
-                  >
-                    <option value="Beginner">Beginner</option>
-                    <option value="Intermediate">Intermediate</option>
-                    <option value="Advanced">Advanced</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Thumbnail Upload */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Course Thumbnail *
-                </label>
-                <div className="flex items-start gap-4">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleThumbnailChange}
-                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition"
-                  />
-                </div>
-                {thumbnailPreview && (
-                  <div className="mt-4">
-                    <img
-                      src={thumbnailPreview}
-                      alt="Thumbnail preview"
-                      className="w-48 h-32 object-cover rounded-lg shadow-md"
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  name="isPublished"
-                  checked={formData.isPublished}
-                  onChange={handleInputChange}
-                  className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                />
-                <label className="ml-2 text-sm text-gray-700">
-                  Publish course immediately
-                </label>
-              </div>
-            </div>
-
-            {/* Course Content */}
-            <div className="space-y-6 border-t pt-8">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-semibold text-gray-800">Course Content</h2>
-                <button
-                  type="button"
-                  onClick={addChapter}
-                  className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition shadow-md"
-                >
-                  + Add Chapter
-                </button>
-              </div>
-
-              {chapters.map((chapter, chapterIndex) => (
-                <div key={chapterIndex} className="bg-gray-50 rounded-lg p-6 space-y-4">
-                  <div className="flex justify-between items-start gap-4">
-                    <input
-                      type="text"
-                      value={chapter.chapterTitle}
-                      onChange={(e) => updateChapterTitle(chapterIndex, e.target.value)}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      placeholder={`Chapter ${chapterIndex + 1} Title`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeChapter(chapterIndex)}
-                      className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
-                    >
-                      Remove
-                    </button>
-                  </div>
-
-                  <div className="ml-4 space-y-3">
-                    <button
-                      type="button"
-                      onClick={() => addLecture(chapterIndex)}
-                      className="px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition text-sm"
-                    >
-                      + Add Lecture
-                    </button>
-
-                    {chapter.chapterContent.map((lecture, lectureIndex) => (
-                      <div key={lectureIndex} className="bg-white rounded-lg p-4 space-y-3 shadow-sm">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-1 space-y-3">
-                            <input
-                              type="text"
-                              value={lecture.lectureTitle}
-                              onChange={(e) => updateLecture(chapterIndex, lectureIndex, 'lectureTitle', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-                              placeholder="Lecture Title"
-                            />
-                            <input
-                              type="url"
-                              value={lecture.lectureUrl}
-                              onChange={(e) => updateLecture(chapterIndex, lectureIndex, 'lectureUrl', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-                              placeholder="YouTube Video URL"
-                            />
-                            <div className="flex items-center">
-                              <input
-                                type="checkbox"
-                                checked={lecture.isPreviewFree}
-                                onChange={(e) => updateLecture(chapterIndex, lectureIndex, 'isPreviewFree', e.target.checked)}
-                                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                              />
-                              <label className="ml-2 text-sm text-gray-700">
-                                Free Preview
-                              </label>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => removeLecture(chapterIndex, lectureIndex)}
-                            className="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition text-sm"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+              {!chapter.collapsed && (
+                <div className="p-4">
+                  {chapter.chapterContent.map((lecture, lectureIndex) => (
+                    <div key={lectureIndex} className="flex justify-between items-center mb-2">
+                      <span>{lectureIndex + 1} {lecture.lectureTitle} - {lecture.lectureDuration} mins - <a href={lecture.lectureUrl} target="_blank" className="text-blue-500">Link</a> - {lecture.isPreviewFree ? 'Free Preview' : 'Paid'}</span>
+                      <img onClick={() => handleLecture('remove', chapter.chapterId, lectureIndex)} src={assets.cross_icon} alt="" className='cursor-pointer' />
+                    </div>
+                  ))}
+                  <div className="inline-flex bg-gray-100 p-2 rounded cursor-pointer mt-2" onClick={() => handleLecture('add', chapter.chapterId)}>
+                    + Add Lecture
                   </div>
                 </div>
-              ))}
-
-              {chapters.length === 0 && (
-                <p className="text-center text-gray-500 py-8">
-                  No chapters added yet. Click "Add Chapter" to get started.
-                </p>
               )}
             </div>
+          ))}
+          <div className="flex justify-center items-center bg-blue-100 p-2 rounded-lg cursor-pointer" onClick={() => handleChapter('add')}>
+            + Add Chapter
+          </div>
 
-
-            <div className="flex justify-end gap-4 border-t pt-6">
-              <button
-                type="button"
-                onClick={() => navigate('/educator/my-courses')}
-                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? 'Creating Course...' : 'Create Course'}
-              </button>
+          {showPopup && (
+            <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50">
+              <div className="bg-white text-gray-700 p-4 rounded relative w-full max-w-80">
+                <h2 className="text-lg font-semibold mb-4">Add Lecture</h2>
+                <div className="mb-2">
+                  <p>Lecture Title</p>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full border rounded py-1 px-2"
+                    value={lectureDetails.lectureTitle}
+                    onChange={(e) => setLectureDetails({ ...lectureDetails, lectureTitle: e.target.value })}
+                  />
+                </div>
+                <div className="mb-2">
+                  <p>Duration (minutes)</p>
+                  <input
+                    type="number"
+                    className="mt-1 block w-full border rounded py-1 px-2"
+                    value={lectureDetails.lectureDuration}
+                    onChange={(e) => setLectureDetails({ ...lectureDetails, lectureDuration: e.target.value })}
+                  />
+                </div>
+                <div className="mb-2">
+                  <p>Lecture URL</p>
+                  <input
+                    type="text"
+                    className="mt-1 block w-full border rounded py-1 px-2"
+                    value={lectureDetails.lectureUrl}
+                    onChange={(e) => setLectureDetails({ ...lectureDetails, lectureUrl: e.target.value })}
+                  />
+                </div>
+                <div className="flex gap-2 my-4">
+                  <p>Is Preview Free?</p>
+                  <input
+                    type="checkbox" className='mt-1 scale-125'
+                    checked={lectureDetails.isPreviewFree}
+                    onChange={(e) => setLectureDetails({ ...lectureDetails, isPreviewFree: e.target.checked })}
+                  />
+                </div>
+                <button type='button' className="w-full bg-blue-400 text-white px-4 py-2 rounded" onClick={addLecture}>Add</button>
+                <img onClick={() => setShowPopup(false)} src={assets.cross_icon} className='absolute top-4 right-4 w-4 cursor-pointer' alt="" />
+              </div>
             </div>
-          </form>
+          )}
         </div>
-      </div>
+
+        <button type="submit" className='bg-black text-white w-max py-2.5 px-8 rounded my-4'>
+          ADD
+        </button>
+      </form>
     </div>
   );
 };
