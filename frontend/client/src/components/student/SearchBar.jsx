@@ -1,38 +1,27 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { assets } from '../../assets/assets';
+import React, { useState } from 'react'
+import { assets } from '../../assets/assets'
+import { useNavigate } from 'react-router-dom'
 
 const SearchBar = ({ data }) => {
-  const navigate = useNavigate();
-  const [input, setInput] = useState(data ? data : '');
+
+  const navigate = useNavigate()
+
+  const [input, setInput] = useState(data ? data : '')
 
   const onSearchHandler = (e) => {
-    e.preventDefault();
-    if (input.trim()) {
-      navigate('/course-list/' + input);
-    }
-  };
+    e.preventDefault()
+
+    navigate('/course-list/' + input)
+
+  }
 
   return (
-    <form onSubmit={onSearchHandler} className="max-w-xl w-full flex items-center bg-white border border-gray-300 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition group">
-      <div className="pl-4 pr-3 py-4 text-gray-400 group-focus-within:text-indigo-600 transition">
-        <img src={assets.search_icon} alt="Search" className="w-5 h-5" />
-      </div>
-      <input
-        type="text"
-        placeholder="What do you want to learn?"
-        className="flex-1 py-4 text-gray-700 outline-none text-base md:text-lg placeholder:text-gray-400"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-      />
-      <button
-        type="submit"
-        className="mr-2 ml-2 px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium shadow-md hover:from-indigo-700 hover:to-purple-700 transition"
-      >
-        Search
-      </button>
+    <form onSubmit={onSearchHandler} className="max-w-xl w-full md:h-14 h-12 flex items-center bg-white border border-gray-500/20 rounded">
+      <img className="md:w-auto w-10 px-3" src={assets.search_icon} alt="search_icon" />
+      <input onChange={e => setInput(e.target.value)} value={input} type="text" className="w-full h-full outline-none text-gray-500/80" placeholder="Search for courses" />
+      <button type='submit' className="bg-blue-600 rounded text-white md:px-10 px-7 md:py-3 py-2 mx-1">Search</button>
     </form>
-  );
-};
+  )
+}
 
-export default SearchBar;
+export default SearchBar
