@@ -19,6 +19,7 @@ const Dashboard = () => {
       const token = await getToken();
 
       const response = await fetch(`${backendUrl}/api/educator/dashboard`, {
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`
         }

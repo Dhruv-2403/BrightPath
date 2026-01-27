@@ -137,6 +137,7 @@ const AddCourse = () => {
 
       const response = await fetch(`${backendUrl}/api/educator/add-course`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Authorization': `Bearer ${token}`
         },
@@ -403,7 +404,7 @@ const AddCourse = () => {
               )}
             </div>
 
-            {/* Submit Button */}
+
             <div className="flex justify-end gap-4 border-t pt-6">
               <button
                 type="button"

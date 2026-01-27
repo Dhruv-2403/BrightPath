@@ -24,8 +24,14 @@ import courseRouter from "./routes/courseRoutes.js"
 import userRouter from "./routes/userRoutes.js"
 const app = express()
 
-app.use(cors())
-app.use(clerkMiddleware())
+app.use(cors({
+    origin: 'http://localhost:5173', // Frontend URL
+    credentials: true // Allow cookies
+}))
+app.use(clerkMiddleware({
+    // Allow Clerk to read the token from the Authorization header
+    // This is necessary when using fetch with Bearer token from frontend
+}))
 app.use(express.json())
 app.get("/", (req, res) => {
     res.send("API is working")
