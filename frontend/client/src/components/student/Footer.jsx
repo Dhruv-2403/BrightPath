@@ -1,63 +1,43 @@
 import React from 'react';
+import { assets } from '../../assets/assets';
 
 const Footer = () => {
   return (
-    <footer className="bg-gray-900 text-white pt-20 pb-10 px-4 sm:px-10 md:px-14 lg:px-36">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16 border-b border-gray-800 pb-16">
-        <div className="col-span-1 md:col-span-1">
-          <h2 className="text-2xl font-black bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent mb-6">
-            BrightPath
-          </h2>
-          <p className="text-gray-400 leading-relaxed mb-6">
-            Empowering lifelong learners through expert-led courses and a supportive community. Your path to mastery starts here.
+    <footer className="bg-gray-900 md:px-36 text-left w-full mt-10">
+      <div className="flex flex-col md:flex-row items-start px-8 md:px-0 justify-center gap-10 md:gap-32 py-10 border-b border-white/30">
+
+        <div className="flex flex-col md:items-start items-center w-full">
+          <img src={assets.logo_dark} alt="logo" />
+          <p className="mt-6 text-center md:text-left text-sm text-white/80">
+            Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text.
           </p>
         </div>
 
-        <div>
-          <h3 className="text-lg font-bold mb-6">Explore</h3>
-          <ul className="space-y-4 text-gray-400">
-            <li><a href="/course-list" className="hover:text-indigo-400 transition">All Courses</a></li>
-            <li><a href="#" className="hover:text-indigo-400 transition">Categories</a></li>
-            <li><a href="#" className="hover:text-indigo-400 transition">Educators</a></li>
-            <li><a href="#" className="hover:text-indigo-400 transition">About Us</a></li>
+        <div className="flex flex-col md:items-start items-center w-full">
+          <h2 className="font-semibold text-white mb-5">Company</h2>
+          <ul className="flex md:flex-col w-full justify-between text-sm text-white/80 md:space-y-2">
+            <li><a href="#">Home</a></li>
+            <li><a href="#">About us</a></li>
+            <li><a href="#">Contact us</a></li>
+            <li><a href="#">Privacy policy</a></li>
           </ul>
         </div>
 
-        <div>
-          <h3 className="text-lg font-bold mb-6">Support</h3>
-          <ul className="space-y-4 text-gray-400">
-            <li><a href="#" className="hover:text-indigo-400 transition">Help Center</a></li>
-            <li><a href="#" className="hover:text-indigo-400 transition">Terms of Service</a></li>
-            <li><a href="#" className="hover:text-indigo-400 transition">Privacy Policy</a></li>
-            <li><a href="#" className="hover:text-indigo-400 transition">Contact Us</a></li>
-          </ul>
+        <div className="hidden md:flex flex-col items-start w-full">
+          <h2 className="font-semibold text-white mb-5">Subscribe to our newsletter</h2>
+          <p className="text-sm text-white/80">
+            The latest news, articles, and resources, sent to your inbox weekly.
+          </p>
+          <div className="flex items-center gap-2 pt-4">
+            <input className="border border-gray-500/30 bg-gray-800 text-gray-500 placeholder-gray-500 outline-none w-64 h-9 rounded px-2 text-sm" type="email" placeholder="Enter your email" />
+            <button className="bg-blue-600 w-24 h-9 text-white rounded">Subscribe</button>
+          </div>
         </div>
 
-        <div>
-          <h3 className="text-lg font-bold mb-6">Subscribe to our newsletter</h3>
-          <p className="text-gray-400 mb-6">The latest news, articles, and resources, sent to your inbox weekly.</p>
-          <form className="flex gap-2">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 flex-1 outline-none focus:border-indigo-500 transition"
-            />
-            <button className="bg-indigo-600 hover:bg-indigo-700 px-6 py-2 rounded-lg font-medium transition">
-              Subscribe
-            </button>
-          </form>
-        </div>
       </div>
-
-      <div className="flex flex-col md:flex-row items-center justify-between text-gray-500 text-sm">
-        <p>© 2026 BrightPath. All rights reserved.</p>
-        <div className="flex items-center gap-6 mt-4 md:mt-0">
-          <a href="#" className="hover:text-white transition text-lg">𝕏</a>
-          <a href="#" className="hover:text-white transition text-lg">ig</a>
-          <a href="#" className="hover:text-white transition text-lg">fb</a>
-          <a href="#" className="hover:text-white transition text-lg">in</a>
-        </div>
-      </div>
+      <p className="py-4 text-center text-xs md:text-sm text-white/60">
+        Copyright 2024 © BrightPath. All Right Reserved.
+      </p>
     </footer>
   );
 };
