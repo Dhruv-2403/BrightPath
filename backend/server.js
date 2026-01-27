@@ -39,7 +39,7 @@ app.get("/", (req, res) => {
 
 
 // clerk webhooks
-app.post("/stripe", express.raw({ type: "aaplication/json" }), stripeWebHooks)
+app.post("/stripe", express.raw({ type: "application/json" }), stripeWebHooks)
 app.post("/clerk", clerkWebHooks)
 app.use("/api/educator", educatorRouter)
 app.use("/api/course", courseRouter)
