@@ -1,350 +1,225 @@
-import React, { useContext, useEffect, useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
-import { AppContext } from '../../context/AppContext'
-import Navbar from '../../components/student/Navbar'
-import Footer from '../../components/student/Footer'
-import CourseCard from '../../components/student/CourseCard'
-import { useAuth } from '@clerk/clerk-react'
-import axios from 'axios'
-import toast from 'react-hot-toast'
+import React, { useContext, useEffect, useState } from 'react';
+import Footer from '../../components/student/Footer';
+import { assets } from '../../assets/assets';
+import { useParams } from 'react-router-dom';
+import axios from 'axios';
+import { AppContext } from '../../context/AppContext';
+import { toast } from 'react-toastify';
+import humanizeDuration from 'humanize-duration'
+import YouTube from 'react-youtube';
+import { useAuth } from '@clerk/clerk-react';
+import Loading from '../../components/student/Loading';
 
 const CourseDetails = () => {
+
   const { id } = useParams()
-  const navigate = useNavigate()
-  const { backendUrl, currency, calculateRating, allCourses } = useContext(AppContext)
-  const { getToken, userId } = useAuth()
 
   const [courseData, setCourseData] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [playerData, setPlayerData] = useState(null)
   const [isAlreadyEnrolled, setIsAlreadyEnrolled] = useState(false)
-  const [enrolling, setEnrolling] = useState(false)
+
+  const { backendUrl, currency, userData, calculateChapterTime, calculateCourseDuration, calculateRating, calculateNoOfLectures } = useContext(AppContext)
+  const { getToken } = useAuth()
+
 
   const fetchCourseData = async () => {
+
     try {
-      setLoading(true)
-      const { data } = await axios.get(`${backendUrl}/api/course/${id}`)
+
+      const { data } = await axios.get(backendUrl + '/api/course/' + id)
+
       if (data.success) {
         setCourseData(data.courseData)
-        
-        // Check if user is enrolled
-        if (userId && data.courseData.enrolledStudents?.includes(userId)) {
-          setIsAlreadyEnrolled(true)
-        }
       } else {
         toast.error(data.message)
       }
+
     } catch (error) {
+
       toast.error(error.message)
-    } finally {
-      setLoading(false)
+
     }
+
   }
 
-  const handleEnroll = async (courseId) => {
-    if (!userId) {
-      toast.error('Please login to enroll in this course')
-      navigate('/login')
-      return
-    }
+  const [openSections, setOpenSections] = useState({});
+
+  const toggleSection = (index) => {
+    setOpenSections((prev) => ({
+      ...prev,
+      [index]: !prev[index],
+    }));
+  };
+
+
+  const enrollCourse = async () => {
 
     try {
-      setEnrolling(true)
-      const token = await getToken()
-      
-      const { data } = await axios.post(
-        `${backendUrl}/api/user/enroll/${courseId}`,
-        {},
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          withCredentials: true
-        }
+
+      if (!userData) {
+        return toast.warn('Login to Enroll')
+      }
+
+      if (isAlreadyEnrolled) {
+        return toast.warn('Already Enrolled')
+      }
+
+      const token = await getToken();
+
+      const { data } = await axios.post(backendUrl + '/api/user/purchase',
+        { courseId: courseData._id },
+        { headers: { Authorization: `Bearer ${token}` } }
       )
 
       if (data.success) {
-        toast.success('Successfully enrolled in the course!')
-        setIsAlreadyEnrolled(true)
-        // Update course data to reflect enrollment
-        setCourseData(prev => ({
-          ...prev,
-          enrolledStudents: [...(prev.enrolledStudents || []), userId]
-        }))
+        const { session_url } = data
+        window.location.replace(session_url)
       } else {
         toast.error(data.message)
       }
+
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to enroll in course')
-    } finally {
-      setEnrolling(false)
+      toast.error(error.message)
     }
   }
 
   useEffect(() => {
     fetchCourseData()
-  }, [id])
+  }, [])
 
-  const discountedPrice = courseData ? courseData.coursePrice - (courseData.coursePrice * courseData.discount / 100) : 0
+  useEffect(() => {
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600"></div>
-      </div>
-    )
-  }
+    if (userData && courseData) {
+      setIsAlreadyEnrolled(userData.enrolledCourses.includes(courseData._id))
+    }
 
-  if (!courseData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Course Not Found</h2>
-          <Link to="/course-list" className="text-blue-600 hover:text-blue-700">
-            Browse All Courses
-          </Link>
-        </div>
-      </div>
-    )
-  }
+  }, [userData, courseData])
 
-  const relatedCourses = allCourses.filter(
-    course => course.category === courseData.category && course._id !== courseData._id
-  ).slice(0, 3)
+  return courseData ? (
+    <>
+      <div className="flex md:flex-row flex-col-reverse gap-10 relative items-start justify-between md:px-36 px-8 md:pt-20 pt-10 text-left">
+        <div className="absolute top-0 left-0 w-full h-section-height -z-1 bg-gradient-to-b from-cyan-100/70"></div>
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-      
-      {/* Course Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <span className="bg-white bg-opacity-20 px-3 py-1 rounded-full text-sm font-medium">
-                  {courseData.category}
-                </span>
-                <span className="bg-white bg-opacity-20 px-3 py-1 rounded-full text-sm font-medium">
-                  {courseData.level}
-                </span>
-              </div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
-                {courseData.courseTitle}
-              </h1>
-              <p className="text-xl text-blue-100 mb-8 leading-relaxed">
-                {courseData.courseDescription}
-              </p>
-              
-              <div className="flex items-center gap-6 mb-8">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold">{calculateRating(courseData)}</span>
-                  <div className="flex">
-                    {[...Array(5)].map((_, i) => (
-                      <svg
-                        key={i}
-                        className={`w-5 h-5 ${i < Math.floor(calculateRating(courseData)) ? 'text-yellow-400' : 'text-gray-300'}`}
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                    ))}
-                  </div>
-                  <span className="text-blue-100">({courseData.courseRatings?.length || 0} ratings)</span>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                  <span className="text-blue-100">{courseData.enrolledStudents?.length || 0} students</span>
-                </div>
-              </div>
+        <div className="max-w-xl z-10 text-gray-500">
+          <h1 className="md:text-course-deatails-heading-large text-course-deatails-heading-small font-semibold text-gray-800">
+            {courseData.courseTitle}
+          </h1>
+          <p className="pt-4 md:text-base text-sm" dangerouslySetInnerHTML={{ __html: courseData.courseDescription.slice(0, 200) }}>
+          </p>
 
-              {/* Enroll Button */}
-              <div className="flex items-center gap-4">
-                <div className="text-center">
-                  <div className="text-4xl font-bold mb-1">
-                    {currency}{discountedPrice.toFixed(2)}
-                  </div>
-                  {courseData.discount > 0 && (
-                    <div className="text-blue-200 line-through">
-                      {currency}{courseData.coursePrice}
-                    </div>
-                  )}
-                </div>
-                
-                {isAlreadyEnrolled ? (
-                  <button
-                    onClick={() => navigate(`/my-enrollments`)}
-                    className="px-8 py-4 bg-green-500 text-white rounded-lg font-bold text-lg hover:bg-green-600 transition-colors"
-                  >
-                    Continue Learning
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleEnroll(courseData._id)}
-                    disabled={enrolling}
-                    className="px-8 py-4 bg-yellow-400 text-gray-900 rounded-lg font-bold text-lg hover:bg-yellow-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {enrolling ? 'Enrolling...' : 'Enroll Now'}
-                  </button>
-                )}
-              </div>
+          <div className='flex items-center space-x-2 pt-3 pb-1 text-sm'>
+            <p>{calculateRating(courseData)}</p>
+            <div className='flex'>
+              {[...Array(5)].map((_, i) => (<img key={i} src={i < Math.floor(calculateRating(courseData)) ? assets.star : assets.star_blank} alt=''
+                className='w-3.5 h-3.5' />
+              ))}
             </div>
-            
-            <div className="relative">
-              <img
-                src={courseData.courseThumbnail || 'https://via.placeholder.com/600x400?text=Course'}
-                alt={courseData.courseTitle}
-                className="rounded-2xl shadow-2xl w-full"
-              />
-              {courseData.discount > 0 && (
-                <div className="absolute top-4 left-4 bg-red-500 text-white px-4 py-2 rounded-full font-bold">
-                  {courseData.discount}% OFF
-                </div>
-              )}
-            </div>
+            <p className='text-blue-600'>({courseData.courseRatings.length} {courseData.courseRatings.length > 1 ? 'ratings' : 'rating'})</p>
+
+            <p>{courseData.enrolledStudents.length} {courseData.enrolledStudents.length > 1 ? 'students' : 'student'}</p>
           </div>
-        </div>
-      </div>
 
-      {/* Course Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-          <div className="lg:col-span-2">
-            <h2 className="text-3xl font-bold text-gray-900 mb-8">Course Content</h2>
-            
-            {courseData.courseContent && courseData.courseContent.length > 0 ? (
-              <div className="space-y-4">
-                {courseData.courseContent.map((chapter, index) => (
-                  <div key={index} className="bg-white rounded-lg shadow-md overflow-hidden">
-                    <div className="p-6 border-b border-gray-200">
-                      <h3 className="text-lg font-semibold text-gray-900">
-                        Chapter {index + 1}: {chapter.chapterTitle}
-                      </h3>
+          <p className='text-sm'>Course by <span className='text-blue-600 underline'>{courseData.educator.name}</span></p>
+
+          <div className="pt-8 text-gray-800">
+            <h2 className="text-xl font-semibold">Course Structure</h2>
+            <div className="pt-5">
+              {courseData.courseContent.map((chapter, index) => (
+                <div key={index} className="border border-gray-300 bg-white mb-2 rounded">
+                  <div
+                    className="flex items-center justify-between px-4 py-3 cursor-pointer select-none"
+                    onClick={() => toggleSection(index)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <img src={assets.down_arrow_icon} alt="arrow icon" className={`transform transition-transform ${openSections[index] ? "rotate-180" : ""}`} />
+                      <p className="font-medium md:text-base text-sm">{chapter.chapterTitle}</p>
                     </div>
-                    {chapter.chapterContent && chapter.chapterContent.length > 0 && (
-                      <div className="divide-y divide-gray-100">
-                        {chapter.chapterContent.map((lecture, lectureIndex) => (
-                          <div key={lectureIndex} className="p-4 hover:bg-gray-50 transition-colors">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                  <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                                    <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                                  </svg>
-                                </div>
-                                <div>
-                                  <h4 className="font-medium text-gray-900">{lecture.lectureTitle}</h4>
-                                  <p className="text-sm text-gray-500">{lecture.lectureDuration} minutes</p>
-                                </div>
-                              </div>
-                              {lecture.isPreviewFree && (
-                                <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded-full">
-                                  Preview
-                                </span>
-                              )}
+                    <p className="text-sm md:text-default">{chapter.chapterContent.length} lectures - {calculateChapterTime(chapter)}</p>
+                  </div>
+
+                  <div className={`overflow-hidden transition-all duration-300 ${openSections[index] ? "max-h-96" : "max-h-0"}`} >
+                    <ul className="list-disc md:pl-10 pl-4 pr-4 py-2 text-gray-600 border-t border-gray-300">
+                      {chapter.chapterContent.map((lecture, i) => (
+                        <li key={i} className="flex items-start gap-2 py-1">
+                          <img src={assets.play_icon} alt="bullet icon" className="w-4 h-4 mt-1" />
+                          <div className="flex items-center justify-between w-full text-gray-800 text-xs md:text-default">
+                            <p>{lecture.lectureTitle}</p>
+                            <div className='flex gap-2'>
+                              {lecture.isPreviewFree && <p onClick={() => setPlayerData({
+                                videoId: lecture.lectureUrl.split('/').pop()
+                              })} className='text-blue-500 cursor-pointer'>Preview</p>}
+                              <p>{humanizeDuration(lecture.lectureDuration * 60 * 1000, { units: ['h', 'm'] })}</p>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="bg-white rounded-lg p-8 text-center">
-                <div className="text-gray-400 mb-4">
-                  <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                  </svg>
                 </div>
-                <p className="text-gray-600">Course content will be available soon</p>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
 
-          {/* Course Info Sidebar */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-md p-6 sticky top-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Course Info</h3>
-              
-              <div className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Category</span>
-                  <span className="font-medium">{courseData.category}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Level</span>
-                  <span className="font-medium">{courseData.level}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Duration</span>
-                  <span className="font-medium">
-                    {courseData.courseContent?.reduce((total, chapter) => 
-                      total + (chapter.chapterContent?.reduce((chTotal, lecture) => chTotal + (lecture.lectureDuration || 0), 0) || 0), 0
-                    ) || 0} minutes
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Students</span>
-                  <span className="font-medium">{courseData.enrolledStudents?.length || 0}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Rating</span>
-                  <span className="font-medium">{calculateRating(courseData)}/5</span>
-                </div>
-              </div>
+          <div className="py-20 text-sm md:text-default">
+            <h3 className="text-xl font-semibold text-gray-800">Course Description</h3>
+            <p className="rich-text pt-3" dangerouslySetInnerHTML={{ __html: courseData.courseDescription }}>
+            </p>
+          </div>
+        </div>
 
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <div className="text-center mb-4">
-                  <div className="text-3xl font-bold text-gray-900">
-                    {currency}{discountedPrice.toFixed(2)}
-                  </div>
-                  {courseData.discount > 0 && (
-                    <div className="text-gray-400 line-through">
-                      {currency}{courseData.coursePrice}
-                    </div>
-                  )}
-                </div>
-                
-                {isAlreadyEnrolled ? (
-                  <button
-                    onClick={() => navigate(`/my-enrollments`)}
-                    className="w-full px-6 py-3 bg-green-500 text-white rounded-lg font-bold hover:bg-green-600 transition-colors"
-                  >
-                    Continue Learning
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleEnroll(courseData._id)}
-                    disabled={enrolling}
-                    className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {enrolling ? 'Enrolling...' : 'Enroll Now'}
-                  </button>
-                )}
+        <div className="max-w-course-card z-10 shadow-custom-card rounded-t md:rounded-none overflow-hidden bg-white min-w-[300px] sm:min-w-[420px]">
+          {
+            playerData
+              ? <YouTube videoId={playerData.videoId} opts={{ playerVars: { autoplay: 1 } }} iframeClassName='w-full aspect-video' />
+              : <img src={courseData.courseThumbnail} alt="" />
+          }
+          <div className="p-5">
+            <div className="flex items-center gap-2">
+              <img className="w-3.5" src={assets.time_left_clock_icon} alt="time left clock icon" />
+              <p className="text-red-500">
+                <span className="font-medium">5 days</span> left at this price!
+              </p>
+            </div>
+            <div className="flex gap-3 items-center pt-2">
+              <p className="text-gray-800 md:text-4xl text-2xl font-semibold">{currency}{(courseData.coursePrice - courseData.discount * courseData.coursePrice / 100).toFixed(2)}</p>
+              <p className="md:text-lg text-gray-500 line-through">{currency}{courseData.coursePrice}</p>
+              <p className="md:text-lg text-gray-500">{courseData.discount}% off</p>
+            </div>
+            <div className="flex items-center text-sm md:text-default gap-4 pt-2 md:pt-4 text-gray-500">
+              <div className="flex items-center gap-1">
+                <img src={assets.star} alt="star icon" />
+                <p>{calculateRating(courseData)}</p>
               </div>
+              <div className="h-4 w-px bg-gray-500/40"></div>
+              <div className="flex items-center gap-1">
+                <img src={assets.time_clock_icon} alt="clock icon" />
+                <p>{calculateCourseDuration(courseData)}</p>
+              </div>
+              <div className="h-4 w-px bg-gray-500/40"></div>
+              <div className="flex items-center gap-1">
+                <img src={assets.lesson_icon} alt="clock icon" />
+                <p>{calculateNoOfLectures(courseData)} lessons</p>
+              </div>
+            </div>
+            <button onClick={enrollCourse} className="md:mt-6 mt-4 w-full py-3 rounded bg-blue-600 text-white font-medium">
+              {isAlreadyEnrolled ? "Already Enrolled" : "Enroll Now"}
+            </button>
+            <div className="pt-6">
+              <p className="md:text-xl text-lg font-medium text-gray-800">What's in the course?</p>
+              <ul className="ml-4 pt-2 text-sm md:text-default list-disc text-gray-500">
+                <li>Lifetime access with free updates.</li>
+                <li>Step-by-step, hands-on project guidance.</li>
+                <li>Downloadable resources and source code.</li>
+                <li>Quizzes to test your knowledge.</li>
+                <li>Certificate of completion.</li>
+              </ul>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Related Courses */}
-      {relatedCourses.length > 0 && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8">Related Courses</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {relatedCourses.map((course, index) => (
-              <CourseCard key={index} course={course} />
-            ))}
-          </div>
-        </div>
-      )}
-
       <Footer />
-    </div>
-  )
-}
+    </>
+  ) : <Loading />
+};
 
-export default CourseDetails
+export default CourseDetails;
